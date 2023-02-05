@@ -48,9 +48,15 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+#if CALIBRATION_DATA_INTERPOLATION
 float TS_CAL1 = 0;
 float TS_CAL2 = 0;
 float V_REFIN_CAL = 0;
+#endif
+const float V25 = 760; // V at 25°C
+const float AVG_SLOPE = 2.5; //mV/°C
+const float T_OFFSET = 25.0;
+
 uint32_t adc[2] = {0};
 /* USER CODE END PV */
 
@@ -71,7 +77,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+#if CALIBRATION_DATA_INTERPOLATION
 	/* Temperature sensor characteristics, datasheet - production data,
 	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.25 (Page 168) */
 	/* TS ADC raw data acquired at temperature of 30 °C, VDDA= 3.3 V */
@@ -82,6 +88,7 @@ int main(void)
 	/* Reference voltage, datasheet - production data,
 	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.27 (Page 169) */
 	V_REFIN_CAL = (float)*((uint16_t*)0x1FF0F44A); /* 0x1FF0F44A - 0x1FF0F44B*/
+#endif
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -182,6 +189,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 int _write(int file, char *ptr, int len)
 {
 	HAL_UART_Transmit(&huart3, (uint8_t*)ptr, len, HAL_MAX_DELAY);
@@ -199,26 +207,16 @@ or µV/°C)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	//const float V_DDA = 3300;
-	//const float Vrefint = 1210;
-	//float Vcor = (float)data[0] * 4096 * Vrefint / (V_DDA *(float)V_REFIN_CAL);
-	//float raw = (float)(((data[0]*3300)/4095));
-	//float temp = ((raw - 760.0)/2.5) + 25.0;
-	//uint16_t ref_int = (uint16_t)((uint32_t)3300 * (uint32_t)V_REFIN_CAL / (uint32_t)data[1]);
-
-	//uint32_t CH_B = adc[1]*3300/4096;
-	//printf("V_TEMP %ld\r\n\n", CH_B);
-
-	/* Datasheet STM32F767, 6.3.25 (Page 168) */
-	const float V25 = 760; // V at 25°C
-	const float AVG_SLOPE = 2.5; //mV/°C
-	const float T_OFFSET = 25.0;
 
 	if(hadc->Instance == ADC1)
 	{
 		float v_sense = (float)(adc[0]*3300/4096);
+		/* Temperature sensor characteristics, RM0410 Reference manual,
+		 * STM32F76xxx and STM32F77xxx ... , 15.10 (Page 464) */
+		/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
+		/* TODO: use calibration values */
 		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-		printf("Temperature %3.2f*C\r\n", temp);
+		printf("T %3.2f*C\r\n", temp);
 	}
 }
 /* USER CODE END 4 */
