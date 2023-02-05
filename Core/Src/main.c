@@ -56,7 +56,10 @@ float V_REFIN_CAL = 0;
 const float V25 = 760; // V at 25°C
 const float AVG_SLOPE = 2.5; //mV/°C
 const float T_OFFSET = 25.0;
-
+const uint32_t VDDA_NOM = 3300;
+const uint32_t ADC_MAX = 4095;
+const uint32_t ADC_CH_RANK_1 = 0;
+const uint32_t ADC_CH_RANK_2 = 1;
 uint32_t adc[2] = {0};
 /* USER CODE END PV */
 
@@ -117,7 +120,7 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim1);
-  HAL_ADC_Start_DMA(&hadc1, adc, 1);
+  HAL_ADC_Start_DMA(&hadc1, adc, 2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -210,13 +213,16 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 	if(hadc->Instance == ADC1)
 	{
-		float v_sense = (float)(adc[0]*3300/4096);
+		printf("CH12 = %ldmV\r\n", adc[ADC_CH_RANK_1]*VDDA_NOM/ADC_MAX);
+
 		/* Temperature sensor characteristics, RM0410 Reference manual,
 		 * STM32F76xxx and STM32F77xxx ... , 15.10 (Page 464) */
 		/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
 		/* TODO: use calibration values */
+
+		float v_sense = (float)(adc[1]*VDDA_NOM/ADC_MAX);
 		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-		printf("T %3.2f*C\r\n", temp);
+		printf("T = %3.2f*C\r\n", temp);
 	}
 }
 /* USER CODE END 4 */
