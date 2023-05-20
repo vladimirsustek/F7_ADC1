@@ -119,6 +119,16 @@ int main(void)
   MX_ETH_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+
+  /* TIM-Triggered DMA ADC Continuous conversion
+   * For multiple ADC channels on a more complex
+   * MCU (STM32F767) is needed to initialize more
+   * "ADC's RANKS" (HAL_ADC_ConfiChannel..)
+   * 0) ADC must support concrete timer to be trigger source (TRGO)
+   * 1) Timer must have selected "Output Update Event .. TRGO"
+   * 2) ADC must have enabled triggers source (TIMER X output event)
+   * 2) DMA must be initialized before the ADC
+   * 3) Timer must be started before the ADC DMA*/
   HAL_TIM_Base_Start(&htim1);
   HAL_ADC_Start_DMA(&hadc1, adc, 2);
   /* USER CODE END 2 */
