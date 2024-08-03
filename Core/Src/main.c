@@ -20,15 +20,15 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
-#include "eth.h"
+#include "rng.h"
 #include "tim.h"
 #include "usart.h"
-#include "usb_otg.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +38,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define UART_RX_BUFF_SIZE       (uint8_t)(64u)
+#define PWM_CMD_SIZE			(uint8_t)(9u) //PA03_999\n
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,13 +62,23 @@ const uint32_t VDDA_NOM = 3300;
 const uint32_t ADC_MAX = 4095;
 const uint32_t ADC_CH_RANK_1 = 0;
 const uint32_t ADC_CH_RANK_2 = 1;
-uint32_t adc[2] = {0};
+
+volatile uint8_t rx_buff[UART_RX_BUFF_SIZE];
+volatile uint8_t rx_buff_wr_idx;
+volatile uint8_t rx_buff_rd_idx;
+volatile uint8_t rx_buff_records;
+volatile uint8_t rx_buff_overflow;
+
+volatile uint32_t adc[2] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+uint16_t readLine(uint8_t* pData, uint16_t size);
+static void uart_enter_critical(void);
+static void uart_exit_critical(void);
+uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -114,10 +126,10 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART3_UART_Init();
-  MX_USB_OTG_FS_PCD_Init();
   MX_ADC1_Init();
-  MX_ETH_Init();
   MX_TIM1_Init();
+  MX_RNG_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* TIM-Triggered DMA ADC Continuous conversion
@@ -130,7 +142,14 @@ int main(void)
    * 2) DMA must be initialized before the ADC
    * 3) Timer must be started before the ADC DMA*/
   HAL_TIM_Base_Start(&htim1);
-  HAL_ADC_Start_DMA(&hadc1, adc, 2);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
+
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+
+  HAL_UART_Receive_IT(&huart3, (uint8_t*)rx_buff, sizeof(uint8_t));
+
+  htim2.Instance->ARR = 999u;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -140,6 +159,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  uint8_t buffer[64] = {0};
+	  uint16_t size = 0;
+	  if((size = readLine(buffer, 1)) > 0)
+	  {
+		  printf("SetPWM: %d\n", SetPWM(buffer, size));
+		  HAL_UART_Transmit(&huart3, buffer, size, HAL_MAX_DELAY);
+	  }
+
   }
   /* USER CODE END 3 */
 }
@@ -193,7 +220,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
@@ -220,21 +247,158 @@ or µV/°C)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-
 	if(hadc->Instance == ADC1)
 	{
-		printf("CH12 = %ldmV\r\n", adc[ADC_CH_RANK_1]*VDDA_NOM/ADC_MAX);
+		//printf("CH12 = %ldmV\r\n", adc[ADC_CH_RANK_1]*VDDA_NOM/ADC_MAX);
 
 		/* Temperature sensor characteristics, RM0410 Reference manual,
 		 * STM32F76xxx and STM32F77xxx ... , 15.10 (Page 464) */
 		/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
 		/* TODO: use calibration values */
 
-		float v_sense = (float)(adc[1]*VDDA_NOM/ADC_MAX);
+		float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
 		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
 		printf("T = %3.2f*C\r\n", temp);
 	}
 }
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    volatile uint8_t c = huart->Instance->RDR;
+
+    volatile uint8_t next_wr_idx = (rx_buff_wr_idx+1) & (UART_RX_BUFF_SIZE-1);
+
+    if(next_wr_idx != rx_buff_rd_idx && rx_buff_overflow == 0)
+    {
+        if(c == '\n')
+        {
+            rx_buff_records++;
+        }
+
+        rx_buff[rx_buff_wr_idx] = c;
+
+        rx_buff_wr_idx = next_wr_idx;
+    }
+    else
+    {
+        rx_buff[rx_buff_wr_idx] = '\n';
+        rx_buff_records++;
+        rx_buff_overflow = 1;
+    }
+
+    HAL_UART_Receive_IT(&huart3, (uint8_t*)(rx_buff + rx_buff_wr_idx), sizeof(uint8_t));
+}
+
+uint16_t readLine(uint8_t* pData, uint16_t size)
+{
+    if (NULL == pData || size > UART_RX_BUFF_SIZE || rx_buff_records == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        uint8_t bytes = 0;
+
+        uart_enter_critical();
+
+        while(rx_buff_wr_idx != rx_buff_rd_idx)
+        {
+            pData[bytes++] = rx_buff[rx_buff_rd_idx];
+
+            if(rx_buff[rx_buff_rd_idx] == '\n')
+            {
+                rx_buff_rd_idx = (rx_buff_rd_idx + 1) & (UART_RX_BUFF_SIZE - 1);
+                break;
+            }
+
+            rx_buff_rd_idx = (rx_buff_rd_idx + 1) & (UART_RX_BUFF_SIZE - 1);
+
+            /* When overflow happened, the write pointer was not moved (intentional),
+               because this while loop condition would be met, so write pointer is now
+               moved after as the first character was processed */
+            if(rx_buff_overflow)
+            {
+                rx_buff_overflow = 0;
+                rx_buff_wr_idx = (rx_buff_wr_idx + 1) & (UART_RX_BUFF_SIZE - 1);
+            }
+        }
+
+        rx_buff_records--;
+
+        uart_exit_critical();
+
+        return bytes;
+    }
+}
+
+static void uart_enter_critical(void) {
+    HAL_NVIC_DisableIRQ(USART3_IRQn);
+
+}
+
+uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
+{
+/*
+ *  					CN7
+						|--|
+						|xx|
+						|xx|
+						|xx|
+						|xx|
+	TIM2_CH1 (PB15)		|1x|
+						|xx|
+						|xx|
+	TIM2_CH2 (PB03)		|2x| -
+						|xx|
+						|xx|
+						|--|
+*/
+	const uint8_t CMD_ARG_OFFSET = 5u; //PA03_
+
+	if(lng != PWM_CMD_SIZE)
+	{
+        return (uint16_t)(-1);
+    }
+
+	for(uint8_t idx = 0; idx < 3; idx++)
+	{
+		if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
+		{
+			return (uint16_t)(-1);
+		}
+	}
+
+    uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
+    period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
+    period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+
+    if(period > 999)
+    {
+        return (uint16_t)(-1);
+    }
+
+    //TIM2_CH1
+    if(memcmp(pStrCmd, "PA15", 4u) == 0)
+    {
+    	htim2.Instance->CCR1 = period;
+    }
+
+    //TIM2_CH2
+    if(memcmp(pStrCmd, "PB03", 4u) == 0)
+    {
+    	htim2.Instance->CCR2 = period;
+    }
+
+    return 0;
+}
+/* @brief Enable UART interrupt (so its ISR)
+ *
+ *
+ */
+static void uart_exit_critical(void) {
+    HAL_NVIC_EnableIRQ(USART3_IRQn);
+}
+
 /* USER CODE END 4 */
 
 /**
