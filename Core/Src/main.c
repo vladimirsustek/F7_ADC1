@@ -79,6 +79,9 @@ uint16_t readLine(uint8_t* pData, uint16_t size);
 static void uart_enter_critical(void);
 static void uart_exit_critical(void);
 uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
+uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng);
+uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng);
+uint32_t lifo_getAverage(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -91,6 +94,10 @@ uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
   */
 int main(void)
 {
+	uint32_t prevTick = 0;
+	uint32_t btnDebouncer = 0;
+	uint32_t tempReadoutAutomatic = 0;
+	uint32_t tempReadoutAutomaticTick = 0;
   /* USER CODE BEGIN 1 */
 #if CALIBRATION_DATA_INTERPOLATION
 	/* Temperature sensor characteristics, datasheet - production data,
@@ -163,9 +170,41 @@ int main(void)
 	  uint16_t size = 0;
 	  if((size = readLine(buffer, 1)) > 0)
 	  {
-		  printf("SetPWM: %d\n", SetPWM(buffer, size));
-		  HAL_UART_Transmit(&huart3, buffer, size, HAL_MAX_DELAY);
+		  if (SetPWM(buffer, size) &&
+		  GetTemperature(buffer, size) &&
+		  ControlGreenLED(buffer, size))
+		  {
+			  printf("Error\n");
+		  }
 	  }
+
+	  if(HAL_GetTick() > prevTick + 10)
+	  {
+		  prevTick = HAL_GetTick();
+		  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin))
+		  {
+			  btnDebouncer++;
+		  }
+		  else
+		  {
+			  btnDebouncer = (btnDebouncer) ? btnDebouncer - 1 : 0u;
+		  }
+
+		  if (btnDebouncer > 10)
+		  {
+			  tempReadoutAutomatic = (tempReadoutAutomatic) ? 0u : 1u;
+			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)tempReadoutAutomatic);
+		  }
+	  }
+
+	  if(HAL_GetTick() > tempReadoutAutomaticTick + 333 && tempReadoutAutomatic)
+	  {
+		  tempReadoutAutomaticTick = HAL_GetTick();
+		  float v_sense = (float)(lifo_getAverage()*VDDA_NOM/ADC_MAX);
+		  float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+		  printf("T = %3.2f*C\n", temp);
+	  }
+
 
   }
   /* USER CODE END 3 */
@@ -245,6 +284,44 @@ Where:
 or µV/°C)
  */
 
+#define LIFO_SIZE 8
+
+uint32_t lifo[LIFO_SIZE] = {0};
+uint32_t lifo_first = 0;
+uint32_t lifo_usage = 0;
+
+void lifo_insertElement(uint32_t element)
+{
+    if(lifo_usage < (LIFO_SIZE - 1))
+    {
+        lifo[lifo_usage++] = element;
+    }
+    else
+    {
+        lifo[lifo_first] = element;
+    }
+
+    lifo_first = (lifo_first + 1) % 8;
+}
+
+uint32_t lifo_getAverage(void)
+{
+    uint8_t cnt = 0;
+    uint64_t acc = 0;
+    uint8_t idx = (lifo_first - 1) % 8;
+
+    while(cnt < 8)
+    {
+        acc += lifo[idx];
+        idx = (idx + 1) % 8;
+        cnt++;
+    }
+
+    acc = acc >> 3;
+
+    return acc;
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if(hadc->Instance == ADC1)
@@ -256,9 +333,12 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
 		/* TODO: use calibration values */
 
-		float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
-		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-		printf("T = %3.2f*C\r\n", temp);
+		//float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
+		//temp[idx++] = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+
+		lifo_insertElement(adc[ADC_CH_RANK_2]);
+
+		//printf("T = %3.2f*C\r\n", temp);
 	}
 }
 
@@ -381,15 +461,58 @@ uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
     if(memcmp(pStrCmd, "PA15", 4u) == 0)
     {
     	htim2.Instance->CCR1 = period;
+    	printf("PA15_%03lu\n", period);
+
     }
 
     //TIM2_CH2
     if(memcmp(pStrCmd, "PB03", 4u) == 0)
     {
     	htim2.Instance->CCR2 = period;
+    	printf("PB03_%03lu\n", period);
     }
 
+
     return 0;
+}
+
+uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng)
+{
+	if(memcmp(pStrCmd, "CHIPT", 5u) == 0)
+	{
+
+		float v_sense = (float)(lifo_getAverage()*VDDA_NOM/ADC_MAX);
+		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+
+		printf("T = %3.2f*C\n", temp);
+		return 0;
+	}
+	else
+	{
+		return (uint16_t)(-1);
+	}
+}
+
+uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng)
+{
+	if(memcmp(pStrCmd, "LEDG_", 5u) == 0)
+	{
+		if(pStrCmd[5] == '0')
+		{
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+			printf((char*)pStrCmd);
+			return 0;
+		}
+		if(pStrCmd[5] == '1')
+		{
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+			printf((char*)pStrCmd);
+			return 0;
+		}
+	}
+
+	return (uint16_t)(-1);
+
 }
 /* @brief Enable UART interrupt (so its ISR)
  *
