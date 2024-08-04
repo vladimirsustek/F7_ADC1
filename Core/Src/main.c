@@ -75,7 +75,7 @@ volatile uint32_t adc[2] = {0};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-uint16_t readLine(uint8_t* pData, uint16_t size);
+uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size);
 static void uart_enter_critical(void);
 static void uart_exit_critical(void);
 uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
@@ -168,7 +168,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  uint8_t buffer[64] = {0};
 	  uint16_t size = 0;
-	  if((size = readLine(buffer, 1)) > 0)
+	  if((size = _UART_ReadLine(buffer, 1)) > 0)
 	  {
 		  if (SetPWM(buffer, size) &&
 		  GetTemperature(buffer, size) &&
@@ -369,7 +369,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     HAL_UART_Receive_IT(&huart3, (uint8_t*)(rx_buff + rx_buff_wr_idx), sizeof(uint8_t));
 }
 
-uint16_t readLine(uint8_t* pData, uint16_t size)
+uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size)
 {
     if (NULL == pData || size > UART_RX_BUFF_SIZE || rx_buff_records == 0)
     {
