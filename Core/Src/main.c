@@ -58,7 +58,7 @@ float V_REFIN_CAL = 0;
 const float V25 = 760; // V at 25°C
 const float AVG_SLOPE = 2.5; //mV/°C
 const float T_OFFSET = 25.0;
-const uint32_t VDDA_NOM = 3300;
+const float VDDA_NOM = 3300;
 const uint32_t ADC_MAX = 4095;
 const uint32_t ADC_CH_RANK_1 = 0;
 const uint32_t ADC_CH_RANK_2 = 1;
@@ -70,6 +70,8 @@ volatile uint8_t rx_buff_records;
 volatile uint8_t rx_buff_overflow;
 
 volatile uint32_t adc[2] = {0};
+
+float vbat = 3300.0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +84,13 @@ uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
 uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng);
 uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng);
 uint32_t lifo_getAverage(void);
+
+#define T_CAL1 (float)(30)
+#define T_CAL2 (float)(110)
+
+float V_CAL21;
+float T_CAL21 = (T_CAL2 - T_CAL1);
+float T_CAL_R;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -94,23 +103,26 @@ uint32_t lifo_getAverage(void);
   */
 int main(void)
 {
-	uint32_t prevTick = 0;
-	uint32_t btnDebouncer = 0;
-	uint32_t tempReadoutAutomatic = 0;
-	uint32_t tempReadoutAutomaticTick = 0;
   /* USER CODE BEGIN 1 */
-#if CALIBRATION_DATA_INTERPOLATION
 	/* Temperature sensor characteristics, datasheet - production data,
 	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.25 (Page 168) */
 	/* TS ADC raw data acquired at temperature of 30 °C, VDDA= 3.3 V */
-	TS_CAL1 = (float)*((uint16_t*)0x1FF0F44C); /* 0x1FF0F44C - 0x1FF0F44D*/
+	float TS_CAL1 = (float)*((uint16_t*)0x1FF0F44C); /* 0x1FF0F44C - 0x1FF0F44D*/
 	/* TS ADC raw data acquired at temperature of 110 °C, VDDA= 3.3 V */
 
-	TS_CAL2 = (float)*((uint16_t*)0x1FF0F44E); /* 0x1FF0F44E - 0x1FF0F44F*/
+	float TS_CAL2 = (float)*((uint16_t*)0x1FF0F44E); /* 0x1FF0F44E - 0x1FF0F44F*/
 	/* Reference voltage, datasheet - production data,
 	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.27 (Page 169) */
-	V_REFIN_CAL = (float)*((uint16_t*)0x1FF0F44A); /* 0x1FF0F44A - 0x1FF0F44B*/
-#endif
+	//float V_REFIN_CAL = (float)*((uint16_t*)0x1FF0F44A); /* 0x1FF0F44A - 0x1FF0F44B*/
+
+	V_CAL21 = TS_CAL2 - TS_CAL1;
+	T_CAL_R = T_CAL21/V_CAL21;
+
+	uint32_t btnDebouncer = 0;
+	uint32_t prevTick = 0;
+	uint32_t tempReadoutAutomaticTick = 0;
+	uint32_t tempReadoutAutomatic = 0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -161,6 +173,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -190,22 +203,99 @@ int main(void)
 			  btnDebouncer = (btnDebouncer) ? btnDebouncer - 1 : 0u;
 		  }
 
-		  if (btnDebouncer > 10)
+		  if (btnDebouncer > 30)
 		  {
-			  tempReadoutAutomatic = (tempReadoutAutomatic) ? 0u : 1u;
+			  tempReadoutAutomatic = (tempReadoutAutomatic + 1) % 3u;
 			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)tempReadoutAutomatic);
 		  }
 	  }
 
 	  if(HAL_GetTick() > tempReadoutAutomaticTick + 333 && tempReadoutAutomatic)
 	  {
+		  ADC_ChannelConfTypeDef sConfig = {0};
+
 		  tempReadoutAutomaticTick = HAL_GetTick();
-		  float v_sense = (float)(lifo_getAverage()*VDDA_NOM/ADC_MAX);
-		  float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-		  printf("T = %3.2f*C\n", temp);
+
+		  static int adcTempInitialized = 0;
+		  static int adcVbatInitialized = 0;
+
+		  if(tempReadoutAutomatic == 1)
+		  {
+			  if(!adcTempInitialized)
+			  {
+				  adcVbatInitialized = 0;
+				  adcTempInitialized = 1;
+				  HAL_TIM_Base_Stop(&htim1);
+				  HAL_ADC_Stop_DMA(&hadc1);
+
+				  sConfig.Channel = ADC_CHANNEL_12;
+				  sConfig.Rank = ADC_REGULAR_RANK_1;
+				  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+				  {
+				    Error_Handler();
+				  }
+
+				  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+				  sConfig.Rank = ADC_REGULAR_RANK_2;
+				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+				  {
+				    Error_Handler();
+				  }
+
+				  HAL_TIM_Base_Start(&htim1);
+				  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
+			  }
+			  else
+			  {
+				  float rawadc = lifo_getAverage();
+				  float v_sense = (float)(rawadc*vbat/ADC_MAX);
+				  float temp1 = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+				  float temp2 = T_CAL_R*rawadc + T_CAL1 - T_CAL_R*TS_CAL1;
+
+				  printf("T1 = %3.2f*C\n", temp1);
+				  printf("T2 = %3.2f*C\n", temp2);
+			  }
+
+
+		  }
+		  else if(tempReadoutAutomatic == 2)
+		  {
+			  if(!adcVbatInitialized)
+			  {
+				  adcVbatInitialized = 1;
+				  adcTempInitialized = 0;
+				  HAL_TIM_Base_Stop(&htim1);
+				  HAL_ADC_Stop_DMA(&hadc1);
+
+				  sConfig.Channel = ADC_CHANNEL_12;
+				  sConfig.Rank = ADC_REGULAR_RANK_1;
+				  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+				  {
+				    Error_Handler();
+				  }
+
+				  sConfig.Channel = ADC_CHANNEL_VBAT;
+				  sConfig.Rank = ADC_REGULAR_RANK_2;
+				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+				  {
+				    Error_Handler();
+				  }
+
+				  HAL_TIM_Base_Start(&htim1);
+				  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
+
+			  }
+			  else
+			  {
+				  float rawadc = lifo_getAverage();
+				  vbat = (float)((rawadc*4*VDDA_NOM)/ADC_MAX);
+				  printf("VBAT = %3.2f*C\n", vbat);
+			  }
+
+		  };
 	  }
-
-
   }
   /* USER CODE END 3 */
 }
@@ -482,9 +572,9 @@ uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng)
 	{
 
 		float v_sense = (float)(lifo_getAverage()*VDDA_NOM/ADC_MAX);
-		float temp = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+		float temp1 = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
 
-		printf("T = %3.2f*C\n", temp);
+		printf("T1 = %3.2f*C\n", temp1);
 		return 0;
 	}
 	else
