@@ -501,11 +501,6 @@ uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size)
     }
 }
 
-static void uart_enter_critical(void) {
-    HAL_NVIC_DisableIRQ(USART3_IRQn);
-
-}
-
 uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
 {
 /*
@@ -610,6 +605,11 @@ uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng)
  */
 static void uart_exit_critical(void) {
     HAL_NVIC_EnableIRQ(USART3_IRQn);
+}
+
+static void uart_enter_critical(void) {
+    HAL_NVIC_DisableIRQ(USART3_IRQn);
+
 }
 
 /* USER CODE END 4 */
