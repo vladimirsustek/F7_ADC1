@@ -13,17 +13,23 @@ extern "C"
 #include "stm32f7xx_hal.h"
 }
 
-namespace
+constexpr uint32_t UART_RX_BUFF_SIZE = 64u;
+constexpr uint32_t SUPPORTED_PERIPHERALS = 1u;
+
+enum UARTPeripheral
 {
-	constexpr uint32_t UART_RX_BUFF_SIZE = 64u;
-}
+	F7_UART3 = 0,
+};
 
 class UartCom
 {
+    friend void UartCallback(UartCom & uartcom, UART_HandleTypeDef *huart);
 public:
-	UartCom* GetInstance(void *uartHW);
+	static UartCom* GetInstance(UARTPeripheral uartHW);
 	void StartBuffer();
 	void StopBuffer();
+	void Write(uint8_t c);
+	void Write(uint8_t *buff, uint32_t length);
 	uint32_t ReadLine(uint8_t *buff, uint32_t buff_size);
 
 private:
@@ -37,6 +43,8 @@ private:
 	volatile uint8_t rx_buff_records;
 	volatile uint8_t rx_buff_overflow;
     static UartCom* instance;
+    static UART_HandleTypeDef* peripheral;
+
 };
 
 #endif /* UARTCOM_HPP_ */

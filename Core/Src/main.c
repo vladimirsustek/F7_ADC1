@@ -29,6 +29,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+
+#include "app_interface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -78,8 +80,6 @@ float vbat = 3300.0;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size);
-static void uart_enter_critical(void);
-static void uart_exit_critical(void);
 uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
 uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng);
 uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng);
@@ -118,11 +118,6 @@ int main(void)
 	V_CAL21 = TS_CAL2 - TS_CAL1;
 	T_CAL_R = T_CAL21/V_CAL21;
 
-	uint32_t btnDebouncer = 0;
-	uint32_t prevTick = 0;
-	uint32_t tempReadoutAutomaticTick = 0;
-	uint32_t tempReadoutAutomatic = 0;
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -150,25 +145,7 @@ int main(void)
   MX_RNG_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
-  /* TIM-Triggered DMA ADC Continuous conversion
-   * For multiple ADC channels on a more complex
-   * MCU (STM32F767) is needed to initialize more
-   * "ADC's RANKS" (HAL_ADC_ConfiChannel..)
-   * 0) ADC must support concrete timer to be trigger source (TRGO)
-   * 1) Timer must have selected "Output Update Event .. TRGO"
-   * 2) ADC must have enabled triggers source (TIMER X output event)
-   * 2) DMA must be initialized before the ADC
-   * 3) Timer must be started before the ADC DMA*/
-  HAL_TIM_Base_Start(&htim1);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
-
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-
-  HAL_UART_Receive_IT(&huart3, (uint8_t*)rx_buff, sizeof(uint8_t));
-
-  htim2.Instance->ARR = 999u;
+  noreturn_app();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -179,123 +156,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  uint8_t buffer[64] = {0};
-	  uint16_t size = 0;
-	  if((size = _UART_ReadLine(buffer, 1)) > 0)
-	  {
-		  if (SetPWM(buffer, size) &&
-		  GetTemperature(buffer, size) &&
-		  ControlGreenLED(buffer, size))
-		  {
-			  printf("Error\n");
-		  }
-	  }
-
-	  if(HAL_GetTick() > prevTick + 10)
-	  {
-		  prevTick = HAL_GetTick();
-		  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin))
-		  {
-			  btnDebouncer++;
-		  }
-		  else
-		  {
-			  btnDebouncer = (btnDebouncer) ? btnDebouncer - 1 : 0u;
-		  }
-
-		  if (btnDebouncer > 30)
-		  {
-			  tempReadoutAutomatic = (tempReadoutAutomatic + 1) % 3u;
-			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)tempReadoutAutomatic);
-		  }
-	  }
-
-	  if(HAL_GetTick() > tempReadoutAutomaticTick + 333 && tempReadoutAutomatic)
-	  {
-		  ADC_ChannelConfTypeDef sConfig = {0};
-
-		  tempReadoutAutomaticTick = HAL_GetTick();
-
-		  static int adcTempInitialized = 0;
-		  static int adcVbatInitialized = 0;
-
-		  if(tempReadoutAutomatic == 1)
-		  {
-			  if(!adcTempInitialized)
-			  {
-				  adcVbatInitialized = 0;
-				  adcTempInitialized = 1;
-				  HAL_TIM_Base_Stop(&htim1);
-				  HAL_ADC_Stop_DMA(&hadc1);
-
-				  sConfig.Channel = ADC_CHANNEL_12;
-				  sConfig.Rank = ADC_REGULAR_RANK_1;
-				  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
-				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-				  {
-				    Error_Handler();
-				  }
-
-				  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-				  sConfig.Rank = ADC_REGULAR_RANK_2;
-				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-				  {
-				    Error_Handler();
-				  }
-
-				  HAL_TIM_Base_Start(&htim1);
-				  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
-			  }
-			  else
-			  {
-				  float rawadc = lifo_getAverage();
-				  float v_sense = (float)(rawadc*vbat/ADC_MAX);
-				  float temp1 = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-				  float temp2 = T_CAL_R*rawadc + T_CAL1 - T_CAL_R*TS_CAL1;
-
-				  printf("T1 = %3.2f*C\n", temp1);
-				  printf("T2 = %3.2f*C\n", temp2);
-			  }
-
-
-		  }
-		  else if(tempReadoutAutomatic == 2)
-		  {
-			  if(!adcVbatInitialized)
-			  {
-				  adcVbatInitialized = 1;
-				  adcTempInitialized = 0;
-				  HAL_TIM_Base_Stop(&htim1);
-				  HAL_ADC_Stop_DMA(&hadc1);
-
-				  sConfig.Channel = ADC_CHANNEL_12;
-				  sConfig.Rank = ADC_REGULAR_RANK_1;
-				  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
-				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-				  {
-				    Error_Handler();
-				  }
-
-				  sConfig.Channel = ADC_CHANNEL_VBAT;
-				  sConfig.Rank = ADC_REGULAR_RANK_2;
-				  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-				  {
-				    Error_Handler();
-				  }
-
-				  HAL_TIM_Base_Start(&htim1);
-				  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc, 2);
-
-			  }
-			  else
-			  {
-				  float rawadc = lifo_getAverage();
-				  vbat = (float)((rawadc*4*VDDA_NOM)/ADC_MAX);
-				  printf("VBAT = %3.2f*C\n", vbat);
-			  }
-
-		  };
-	  }
   }
   /* USER CODE END 3 */
 }
@@ -359,148 +219,6 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-int _write(int file, char *ptr, int len)
-{
-	HAL_UART_Transmit(&huart3, (uint8_t*)ptr, len, HAL_MAX_DELAY);
-	return len;
-}
-
-/*
- * Calculate the temperature using the following formula:
-Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25
-Where:
-– V25 = VSENSE value for 25° C
-– Avg_Slope = average slope of the temperature vs. VSENSE curve (given in mV/°C
-or µV/°C)
- */
-
-#define LIFO_SIZE 8
-
-uint32_t lifo[LIFO_SIZE] = {0};
-uint32_t lifo_first = 0;
-uint32_t lifo_usage = 0;
-
-void lifo_insertElement(uint32_t element)
-{
-    if(lifo_usage < (LIFO_SIZE - 1))
-    {
-        lifo[lifo_usage++] = element;
-    }
-    else
-    {
-        lifo[lifo_first] = element;
-    }
-
-    lifo_first = (lifo_first + 1) % 8;
-}
-
-uint32_t lifo_getAverage(void)
-{
-    uint8_t cnt = 0;
-    uint64_t acc = 0;
-    uint8_t idx = (lifo_first - 1) % 8;
-
-    while(cnt < 8)
-    {
-        acc += lifo[idx];
-        idx = (idx + 1) % 8;
-        cnt++;
-    }
-
-    acc = acc >> 3;
-
-    return acc;
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-	if(hadc->Instance == ADC1)
-	{
-		//printf("CH12 = %ldmV\r\n", adc[ADC_CH_RANK_1]*VDDA_NOM/ADC_MAX);
-
-		/* Temperature sensor characteristics, RM0410 Reference manual,
-		 * STM32F76xxx and STM32F77xxx ... , 15.10 (Page 464) */
-		/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
-		/* TODO: use calibration values */
-
-		//float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
-		//temp[idx++] = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-
-		lifo_insertElement(adc[ADC_CH_RANK_2]);
-
-		//printf("T = %3.2f*C\r\n", temp);
-	}
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    volatile uint8_t c = huart->Instance->RDR;
-
-    volatile uint8_t next_wr_idx = (rx_buff_wr_idx+1) & (UART_RX_BUFF_SIZE-1);
-
-    if(next_wr_idx != rx_buff_rd_idx && rx_buff_overflow == 0)
-    {
-        if(c == '\n')
-        {
-            rx_buff_records++;
-        }
-
-        rx_buff[rx_buff_wr_idx] = c;
-
-        rx_buff_wr_idx = next_wr_idx;
-    }
-    else
-    {
-        rx_buff[rx_buff_wr_idx] = '\n';
-        rx_buff_records++;
-        rx_buff_overflow = 1;
-    }
-
-    HAL_UART_Receive_IT(&huart3, (uint8_t*)(rx_buff + rx_buff_wr_idx), sizeof(uint8_t));
-}
-
-uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size)
-{
-    if (NULL == pData || size > UART_RX_BUFF_SIZE || rx_buff_records == 0)
-    {
-        return 0;
-    }
-    else
-    {
-        uint8_t bytes = 0;
-
-        uart_enter_critical();
-
-        while(rx_buff_wr_idx != rx_buff_rd_idx)
-        {
-            pData[bytes++] = rx_buff[rx_buff_rd_idx];
-
-            if(rx_buff[rx_buff_rd_idx] == '\n')
-            {
-                rx_buff_rd_idx = (rx_buff_rd_idx + 1) & (UART_RX_BUFF_SIZE - 1);
-                break;
-            }
-
-            rx_buff_rd_idx = (rx_buff_rd_idx + 1) & (UART_RX_BUFF_SIZE - 1);
-
-            /* When overflow happened, the write pointer was not moved (intentional),
-               because this while loop condition would be met, so write pointer is now
-               moved after as the first character was processed */
-            if(rx_buff_overflow)
-            {
-                rx_buff_overflow = 0;
-                rx_buff_wr_idx = (rx_buff_wr_idx + 1) & (UART_RX_BUFF_SIZE - 1);
-            }
-        }
-
-        rx_buff_records--;
-
-        uart_exit_critical();
-
-        return bytes;
-    }
-}
-
 uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
 {
 /*
@@ -561,57 +279,21 @@ uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
     return 0;
 }
 
-uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if(memcmp(pStrCmd, "CHIPT", 5u) == 0)
-	{
-
-		float v_sense = (float)(lifo_getAverage()*VDDA_NOM/ADC_MAX);
-		float temp1 = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
-
-		printf("T1 = %3.2f*C\n", temp1);
-		return 0;
-	}
-	else
-	{
-		return (uint16_t)(-1);
-	}
+	uart_cb(huart);
 }
 
-uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng)
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	if(memcmp(pStrCmd, "LEDG_", 5u) == 0)
-	{
-		if(pStrCmd[5] == '0')
-		{
-			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-			printf((char*)pStrCmd);
-			return 0;
-		}
-		if(pStrCmd[5] == '1')
-		{
-			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
-			printf((char*)pStrCmd);
-			return 0;
-		}
-	}
-
-	return (uint16_t)(-1);
-
-}
-/* @brief Enable UART interrupt (so its ISR)
- *
- *
- */
-static void uart_exit_critical(void) {
-    HAL_NVIC_EnableIRQ(USART3_IRQn);
+	adc_cb(hadc);
 }
 
-static void uart_enter_critical(void) {
-    HAL_NVIC_DisableIRQ(USART3_IRQn);
-
+int _write(int file, char *ptr, int len)
+{
+	HAL_UART_Transmit(&huart3, (uint8_t*)ptr, len, HAL_MAX_DELAY);
+	return len;
 }
-
 /* USER CODE END 4 */
 
 /**

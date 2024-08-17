@@ -5,28 +5,53 @@
  *      Author: 42077
  */
 
+#include <cassert>
 #include "uartcom.hpp"
 
-UartCom* UartCom::instance = nullptr;
-
-UartCom* UartCom::GetInstance(void *uartHW)
+extern "C"
 {
-    if(instance == nullptr)
-    {
-        static UartCom singletonUartCom;
-        instance = &singletonUartCom;
-    }
+#include "usart.h"
+}
+
+UartCom* UartCom::instance = nullptr;
+UART_HandleTypeDef* UartCom::peripheral = nullptr;
+
+UartCom* UartCom::GetInstance(UARTPeripheral uartHW)
+{
+	/* When instance was not yet initialized */
+
+	switch(uartHW)
+	{
+	case UARTPeripheral::F7_UART3 :
+	{
+	    if(instance == nullptr)
+	    {
+	        static UartCom singletonUartCom;
+	        instance = &singletonUartCom;
+	    }
+	    if(peripheral == nullptr)
+	    {
+			peripheral = &huart3;
+	    }
+	}
+	break;
+	default : {
+		return nullptr;
+	}
+	}
+
     return instance;
 }
 
 void UartCom::StartBuffer()
 {
-
+	assert(HAL_OK == HAL_UART_Receive_IT(peripheral,
+			const_cast<uint8_t*>(rx_buff), sizeof(uint8_t)));
 }
 
 void UartCom::StopBuffer()
 {
-
+	assert(HAL_OK == HAL_UART_AbortReceive(peripheral));
 }
 
 uint32_t UartCom::ReadLine(uint8_t* buff, uint32_t buff_size)
@@ -71,18 +96,24 @@ uint32_t UartCom::ReadLine(uint8_t* buff, uint32_t buff_size)
     }
 }
 
+void UartCom::Write(uint8_t c)
+{
+	assert(HAL_OK == HAL_UART_Transmit(peripheral,
+			&c, sizeof(uint8_t), HAL_MAX_DELAY));
+}
+
+void UartCom::Write(uint8_t *buff, uint32_t length)
+{
+	assert(HAL_OK == HAL_UART_Transmit(peripheral,
+			buff, length, HAL_MAX_DELAY));
+}
+
 void UartCom::UartComCriticalEnter()
 {
-    HAL_NVIC_EnableIRQ(USART3_IRQn);
+	HAL_NVIC_DisableIRQ(USART3_IRQn);
 }
 
 void UartCom::UartComCriticalExit()
 {
-    HAL_NVIC_DisableIRQ(USART3_IRQn);
+	HAL_NVIC_EnableIRQ(USART3_IRQn);
 }
-
-
-
-
-
-
