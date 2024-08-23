@@ -52,45 +52,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-#if CALIBRATION_DATA_INTERPOLATION
-float TS_CAL1 = 0;
-float TS_CAL2 = 0;
-float V_REFIN_CAL = 0;
-#endif
-const float V25 = 760; // V at 25°C
-const float AVG_SLOPE = 2.5; //mV/°C
-const float T_OFFSET = 25.0;
-const float VDDA_NOM = 3300;
-const uint32_t ADC_MAX = 4095;
-const uint32_t ADC_CH_RANK_1 = 0;
-const uint32_t ADC_CH_RANK_2 = 1;
-
-volatile uint8_t rx_buff[UART_RX_BUFF_SIZE];
-volatile uint8_t rx_buff_wr_idx;
-volatile uint8_t rx_buff_rd_idx;
-volatile uint8_t rx_buff_records;
-volatile uint8_t rx_buff_overflow;
-
-volatile uint32_t adc[2] = {0};
-
-float vbat = 3300.0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-uint16_t _UART_ReadLine(uint8_t* pData, uint16_t size);
-uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng);
-uint16_t GetTemperature(uint8_t* pStrCmd, const uint8_t lng);
-uint16_t ControlGreenLED(uint8_t* pStrCmd, const uint8_t lng);
-uint32_t lifo_getAverage(void);
-
-#define T_CAL1 (float)(30)
-#define T_CAL2 (float)(110)
-
-float V_CAL21;
-float T_CAL21 = (T_CAL2 - T_CAL1);
-float T_CAL_R;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -104,20 +70,6 @@ float T_CAL_R;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	/* Temperature sensor characteristics, datasheet - production data,
-	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.25 (Page 168) */
-	/* TS ADC raw data acquired at temperature of 30 °C, VDDA= 3.3 V */
-	float TS_CAL1 = (float)*((uint16_t*)0x1FF0F44C); /* 0x1FF0F44C - 0x1FF0F44D*/
-	/* TS ADC raw data acquired at temperature of 110 °C, VDDA= 3.3 V */
-
-	float TS_CAL2 = (float)*((uint16_t*)0x1FF0F44E); /* 0x1FF0F44E - 0x1FF0F44F*/
-	/* Reference voltage, datasheet - production data,
-	 * STM32F765xx STM32F767xx STM32F768Ax STM32F769xx, 6.3.27 (Page 169) */
-	//float V_REFIN_CAL = (float)*((uint16_t*)0x1FF0F44A); /* 0x1FF0F44A - 0x1FF0F44B*/
-
-	V_CAL21 = TS_CAL2 - TS_CAL1;
-	T_CAL_R = T_CAL21/V_CAL21;
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/

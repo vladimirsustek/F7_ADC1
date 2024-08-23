@@ -9,6 +9,67 @@ extern "C"
 #include "gpio.h"
 }
 
+#if 0
+const uint8_t CMD_ARG_OFFSET = 5u; //PA03_
+
+if(lng != PWM_CMD_SIZE)
+{
+    return (uint16_t)(-1);
+}
+
+for(uint8_t idx = 0; idx < 3; idx++)
+{
+	if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
+	{
+		return (uint16_t)(-1);
+	}
+}
+
+uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
+period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
+period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+
+if(period > 999)
+{
+    return (uint16_t)(-1);
+}
+
+//TIM2_CH1
+if(memcmp(pStrCmd, "PA15", 4u) == 0)
+{
+	htim2.Instance->CCR1 = period;
+	printf("PA15_%03lu\n", period);
+
+}
+
+//TIM2_CH2
+if(memcmp(pStrCmd, "PB03", 4u) == 0)
+{
+	htim2.Instance->CCR2 = period;
+	printf("PB03_%03lu\n", period);
+}
+#endif
+
+uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+
+}
+
+uint32_t EnablePwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+
+}
+
+uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+
+}
+
+uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+
+}
+
 uint32_t WriteBlueLED(const uint8_t* const pStrCmd, const uint8_t lng)
 {
     if ((CMD_METHOD_LNG + CMD_NAME_LNG +
