@@ -11,6 +11,8 @@ extern "C"
 }
 
 
+constexpr uint32_t HELP_MAX_LINE_LNG = 64u;
+
 uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
 
@@ -223,77 +225,139 @@ uint32_t ReadTemperature2(const uint8_t* const pStrCmd, const uint8_t lng)
 	return CMD_RET_OK;
 }
 
-const CommandArg DEC_UI16_1 =
+const CommandArg DEC_UI16_BOOL =
 {
 		DEC_UI16, 0, 1
+};
+
+const CommandArg NO_ARG =
+{
+		NOARG, 0, 0
+};
+
+const CommandArg DEC_UI16_PWM =
+{
+		DEC_UI16, Pwm::PWM_MIN_PERIOD, Pwm::PWM_MAX_PERIOD
 };
 
 const DispatcherCommand_t cmdWriteBlueLED =
 {
 		WriteBlueLED,
-		DEC_UI16_1
+		DEC_UI16_BOOL
 };
 
 const DispatcherCommand_t cmdWriteRedLED =
 {
 		WriteRedLED,
-		DEC_UI16_1
+		DEC_UI16_BOOL
 };
 
-const CmdDisp2_t testTable[2] = {
-		{method_set,	cmd_blue_led,	cmdWriteBlueLED},
-		{method_set,	cmd_red_led,	cmdWriteRedLED}
-};
-
-const argTypeLUT_t argTypeLUTtable[1] =
+const DispatcherCommand_t cmdReadTemperature1
 {
+	ReadTemperature1,
+	NO_ARG
+};
+
+const DispatcherCommand_t cmdReadTemperature2
+{
+	ReadTemperature1,
+	NO_ARG
+};
+
+const DispatcherCommand_t cmdEnablePwmCh1 =
+{
+		EnablePwmCh1,
+		DEC_UI16_BOOL
+};
+
+const DispatcherCommand_t cmdEnablePwmCh2 =
+{
+		EnablePwmCh2,
+		DEC_UI16_BOOL
+};
+
+const DispatcherCommand_t cmdSetPwmCh1 =
+{
+		SetPwmCh1,
+		DEC_UI16_PWM
+};
+
+const DispatcherCommand_t cmdSetPwmCh2 =
+{
+		SetPwmCh2,
+		DEC_UI16_PWM
+};
+
+const CmdDisp2_t cmdTable[CMD_TABLE_SIZE] = {
+/*01*/		{method_set,		cmd_blue_led,			cmdWriteBlueLED},
+/*02*/		{method_set,		cmd_red_led,			cmdWriteRedLED},
+/*03*/		{method_read,		cmd_temperature1,		cmdReadTemperature1},
+/*04*/		{method_read,		cmd_temperature2,		cmdReadTemperature2},
+/*05*/		{method_enable,		cmd_pwm1,				cmdEnablePwmCh1},
+/*06*/		{method_enable,		cmd_pwm2,				cmdEnablePwmCh2},
+/*07*/		{method_set,		cmd_pwm1,				cmdSetPwmCh1},
+/*08*/		{method_set,		cmd_pwm2,				cmdSetPwmCh2}
+};
+
+const argTypeLUT_t argTypeLUTtable[2] =
+{
+		{NOARG, "NOARG"},
 		{DEC_UI16, "DEC_UI16"}
-};
-
-const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
-
-/*01*/    {method_set,     		cmd_blue_led,           	WriteBlueLED},
-/*02*/    {method_read,     	cmd_temperature1,           ReadTemperature1},
-/*03*/    {method_read,     	cmd_temperature2,    		ReadTemperature2},
-/*04*/    {method_enable,     	cmd_pwm1,    				EnablePwmCh1},
-/*05*/    {method_enable,     	cmd_pwm2,    				EnablePwmCh2},
-/*06*/    {method_set,     		cmd_pwm1,    				SetPwmCh1},
-/*07*/    {method_set,     		cmd_pwm2,    				SetPwmCh1}
 
 };
 
-void HelpCommand(void)
+
+void HelpCommandPrintOut(void)
 {
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+	char helpLine[HELP_MAX_LINE_LNG] = {0};
+    uint32_t lng;
 
-	for(uint32_t idx = 0; idx < 2u; idx++)
+	for(uint32_t idx = 0; idx < CMD_TABLE_SIZE; idx++)
 	{
-		char helpLine[64] = {0};
-
-		if(testTable[idx].cmdFunc.arg.type != NOARG)
+		if(cmdTable[idx].cmdFunc.arg.type != NOARG)
 		{
-			uint32_t lng = sprintf(helpLine,
+			lng = sprintf(helpLine,
+					"----------------------\n"
 					"Typical: %s%c%s%c%lu\n",
-					testTable[idx].method.word,
+					cmdTable[idx].method.word,
 					CMD_DELIMITER,
-					testTable[idx].command.word,
+					cmdTable[idx].command.word,
 					CMD_DELIMITER,
-					(testTable[idx].cmdFunc.arg.max + testTable[idx].cmdFunc.arg.min) >> 1
+					(cmdTable[idx].cmdFunc.arg.max + cmdTable[idx].cmdFunc.arg.min) >> 1
 					);
+
+			assert(lng <= HELP_MAX_LINE_LNG);
 
 			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
 
 			memset(helpLine, 0u, 64);
 
 			lng = sprintf(helpLine, "Arg. type: %s\nMin: %lu\nMax: %lu\n",
-								argTypeLUTtable[testTable[idx].cmdFunc.arg.type].str,
-								testTable[idx].cmdFunc.arg.min,
-								testTable[idx].cmdFunc.arg.max
+								argTypeLUTtable[cmdTable[idx].cmdFunc.arg.type].str,
+								cmdTable[idx].cmdFunc.arg.min,
+								cmdTable[idx].cmdFunc.arg.max
 								);
+
+			assert(lng <= HELP_MAX_LINE_LNG);
 
 			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
 		}
+		else
+		{
+			lng = sprintf(helpLine,
+					"----------------------\n"
+					"Only : %s%c%s\n",
+					cmdTable[idx].method.word,
+					CMD_DELIMITER,
+					cmdTable[idx].command.word
+					);
 
+			assert(lng <= HELP_MAX_LINE_LNG);
+
+			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+
+		}
 	}
 }
 
@@ -302,25 +366,16 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
     uint32_t result = CMD_RET_UKN;
     const char STR_CMD_OK[] = "CMD_OK\n";
     const char STR_CMD_ERR[] = "CMD_ERR\n";
-    const char STR_CMD_UKN[] = "CMD_UKN\n";
+    const char STR_CMD_UKN[] = "CMD_UKN -> Try: \"HELP\\n\"\n";
     const char STR_CMD_FTL[] = "CMD_FTL\n";
 
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
-/*
+
     for(uint8_t idx = 0; idx < CMD_TABLE_SIZE; idx++) {
         if ((!memcmp(pStrCmd, cmdTable[idx].method.word, CMD_METHOD_LNG)) &&
         !memcmp(pStrCmd + CMD_METHOD_LNG + CMD_DELIMITER_LNG, cmdTable[idx].command.word, CMD_NAME_LNG)) {
 
-            result = cmdTable[idx].cmdFunc(pStrCmd, lng);
-            break;
-        }
-    }
-*/
-    for(uint8_t idx = 0; idx < 2u; idx++) {
-        if ((!memcmp(pStrCmd, testTable[idx].method.word, CMD_METHOD_LNG)) &&
-        !memcmp(pStrCmd + CMD_METHOD_LNG + CMD_DELIMITER_LNG, testTable[idx].command.word, CMD_NAME_LNG)) {
-
-            result = testTable[idx].cmdFunc.function(pStrCmd, lng);
+            result = cmdTable[idx].cmdFunc.function(pStrCmd, lng);
             break;
         }
     }
@@ -339,8 +394,15 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
         break;
         case CMD_RET_UKN : 
         {
-            uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_UKN)), strlen(STR_CMD_UKN));
-            HelpCommand();
+            if(!memcmp(pStrCmd, "HELP\n", strlen("HELP\n")))
+            {
+            	HelpCommandPrintOut();
+            }
+            else
+            {
+                uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_UKN)),
+                		strlen(STR_CMD_UKN));
+            }
         }
         break;
         default : 

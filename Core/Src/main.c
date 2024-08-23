@@ -40,8 +40,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define UART_RX_BUFF_SIZE       (uint8_t)(64u)
-#define PWM_CMD_SIZE			(uint8_t)(9u) //PA03_999\n
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -170,66 +169,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-uint16_t SetPWM(uint8_t* pStrCmd, const uint8_t lng)
-{
-/*
- *  					CN7
-						|--|
-						|xx|
-						|xx|
-						|xx|
-						|xx|
-	TIM2_CH1 (PB15)		|1x|
-						|xx|
-						|xx|
-	TIM2_CH2 (PB03)		|2x| -
-						|xx|
-						|xx|
-						|--|
-*/
-	const uint8_t CMD_ARG_OFFSET = 5u; //PA03_
-
-	if(lng != PWM_CMD_SIZE)
-	{
-        return (uint16_t)(-1);
-    }
-
-	for(uint8_t idx = 0; idx < 3; idx++)
-	{
-		if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
-		{
-			return (uint16_t)(-1);
-		}
-	}
-
-    uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
-    period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
-    period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
-
-    if(period > 999)
-    {
-        return (uint16_t)(-1);
-    }
-
-    //TIM2_CH1
-    if(memcmp(pStrCmd, "PA15", 4u) == 0)
-    {
-    	htim2.Instance->CCR1 = period;
-    	printf("PA15_%03lu\n", period);
-
-    }
-
-    //TIM2_CH2
-    if(memcmp(pStrCmd, "PB03", 4u) == 0)
-    {
-    	htim2.Instance->CCR2 = period;
-    	printf("PB03_%03lu\n", period);
-    }
-
-
-    return 0;
-}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {

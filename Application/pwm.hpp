@@ -16,7 +16,8 @@ extern "C"
 class Pwm
 {
 public:
-	static const uint32_t PWM_MAX_PERIOD = 999;
+	static const uint32_t PWM_MIN_PERIOD = 0u;
+	static const uint32_t PWM_MAX_PERIOD = 999u;
 	static Pwm* GetInstance();
 	void PwmStartCh1();
 	void PwmStartCh2();

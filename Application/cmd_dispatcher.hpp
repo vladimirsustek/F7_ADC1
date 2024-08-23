@@ -3,7 +3,7 @@
 
 #include "cmd_defs.hpp"
 
-constexpr uint CMD_TABLE_SIZE = 7u;
+constexpr uint CMD_TABLE_SIZE = 8u;
 
 class CommandDispatcher
 {

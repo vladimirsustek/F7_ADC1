@@ -30,7 +30,7 @@ constexpr uint32_t CMD_RET_UKN=0xF0F0;
 
 typedef uint32_t (*pfn_u32_cpuc8cu8)(const uint8_t* const, const uint8_t lng);
 
-typedef enum {DEC_UI16, NOARG=-1} cmdType_e;
+typedef enum {NOARG = 0, DEC_UI16 = 1} cmdType_e;
 
 typedef struct
 {
