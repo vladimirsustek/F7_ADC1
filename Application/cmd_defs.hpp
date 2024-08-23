@@ -30,6 +30,29 @@ constexpr uint32_t CMD_RET_UKN=0xF0F0;
 
 typedef uint32_t (*pfn_u32_cpuc8cu8)(const uint8_t* const, const uint8_t lng);
 
+typedef enum {DEC_UI16, NOARG=-1} cmdType_e;
+
+typedef struct
+{
+	cmdType_e etype;
+	const char* str;
+
+}argTypeLUT_t;
+
+typedef struct
+{
+	cmdType_e type;
+	uint32_t min;
+	uint32_t max;
+} CommandArg;
+
+typedef struct
+{
+	pfn_u32_cpuc8cu8 function;
+	const CommandArg arg;
+
+} DispatcherCommand_t;
+
 class METHOD
 {
 public:
@@ -49,6 +72,12 @@ typedef struct CmdDisp{
     COMMAND command;
     pfn_u32_cpuc8cu8 cmdFunc;
 } CmdDisp_t;
+
+typedef struct CmdDisp2{
+    METHOD method;
+    COMMAND command;
+    DispatcherCommand_t cmdFunc;
+} CmdDisp2_t;
 
 
 

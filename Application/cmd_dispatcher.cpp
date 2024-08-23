@@ -160,6 +160,27 @@ uint32_t WriteBlueLED(const uint8_t* const pStrCmd, const uint8_t lng)
     return 0;
 }
 
+uint32_t WriteRedLED(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+    if ((CMD_METHOD_LNG + CMD_NAME_LNG +
+         CMD_DELIMITER_LNG*2 + CMD_ARG1_LNG+
+         CMD_EOL_LNG) != lng) {
+
+        return CMD_RET_ERR;
+    }
+
+    GPIO_PinState enable_arg = static_cast<GPIO_PinState>(
+    		(pStrCmd[CMD_ARG_OFFSET] - '0')*1);
+    if(enable_arg != 0u && enable_arg != 1u)
+    {
+        return CMD_RET_ERR;
+    }
+
+    HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, enable_arg);
+
+    return 0;
+}
+
 uint32_t ReadTemperature1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
     if ((CMD_METHOD_LNG + CMD_NAME_LNG +
@@ -202,6 +223,33 @@ uint32_t ReadTemperature2(const uint8_t* const pStrCmd, const uint8_t lng)
 	return CMD_RET_OK;
 }
 
+const CommandArg DEC_UI16_1 =
+{
+		DEC_UI16, 0, 1
+};
+
+const DispatcherCommand_t cmdWriteBlueLED =
+{
+		WriteBlueLED,
+		DEC_UI16_1
+};
+
+const DispatcherCommand_t cmdWriteRedLED =
+{
+		WriteRedLED,
+		DEC_UI16_1
+};
+
+const CmdDisp2_t testTable[2] = {
+		{method_set,	cmd_blue_led,	cmdWriteBlueLED},
+		{method_set,	cmd_red_led,	cmdWriteRedLED}
+};
+
+const argTypeLUT_t argTypeLUTtable[1] =
+{
+		{DEC_UI16, "DEC_UI16"}
+};
+
 const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
 
 /*01*/    {method_set,     		cmd_blue_led,           	WriteBlueLED},
@@ -214,6 +262,41 @@ const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
 
 };
 
+void HelpCommand(void)
+{
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+	for(uint32_t idx = 0; idx < 2u; idx++)
+	{
+		char helpLine[64] = {0};
+
+		if(testTable[idx].cmdFunc.arg.type != NOARG)
+		{
+			uint32_t lng = sprintf(helpLine,
+					"Typical: %s%c%s%c%lu\n",
+					testTable[idx].method.word,
+					CMD_DELIMITER,
+					testTable[idx].command.word,
+					CMD_DELIMITER,
+					(testTable[idx].cmdFunc.arg.max + testTable[idx].cmdFunc.arg.min) >> 1
+					);
+
+			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+
+			memset(helpLine, 0u, 64);
+
+			lng = sprintf(helpLine, "Arg. type: %s\nMin: %lu\nMax: %lu\n",
+								argTypeLUTtable[testTable[idx].cmdFunc.arg.type].str,
+								testTable[idx].cmdFunc.arg.min,
+								testTable[idx].cmdFunc.arg.max
+								);
+
+			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+		}
+
+	}
+}
+
 uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t lng) {
 
     uint32_t result = CMD_RET_UKN;
@@ -223,12 +306,21 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
     const char STR_CMD_FTL[] = "CMD_FTL\n";
 
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
-
+/*
     for(uint8_t idx = 0; idx < CMD_TABLE_SIZE; idx++) {
         if ((!memcmp(pStrCmd, cmdTable[idx].method.word, CMD_METHOD_LNG)) &&
         !memcmp(pStrCmd + CMD_METHOD_LNG + CMD_DELIMITER_LNG, cmdTable[idx].command.word, CMD_NAME_LNG)) {
 
             result = cmdTable[idx].cmdFunc(pStrCmd, lng);
+            break;
+        }
+    }
+*/
+    for(uint8_t idx = 0; idx < 2u; idx++) {
+        if ((!memcmp(pStrCmd, testTable[idx].method.word, CMD_METHOD_LNG)) &&
+        !memcmp(pStrCmd + CMD_METHOD_LNG + CMD_DELIMITER_LNG, testTable[idx].command.word, CMD_NAME_LNG)) {
+
+            result = testTable[idx].cmdFunc.function(pStrCmd, lng);
             break;
         }
     }
@@ -248,6 +340,7 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
         case CMD_RET_UKN : 
         {
             uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_UKN)), strlen(STR_CMD_UKN));
+            HelpCommand();
         }
         break;
         default : 
