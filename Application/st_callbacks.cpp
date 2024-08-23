@@ -40,17 +40,15 @@ void UartCallback(UartCom & uartcom, UART_HandleTypeDef *huart)
 
 void AdcCallback(Measurement & measurement, ADC_HandleTypeDef* hadc)
 {
-	//printf("CH12 = %ldmV\r\n", adc[ADC_CH_RANK_1]*VDDA_NOM/ADC_MAX);
-
 	/* Temperature sensor characteristics, RM0410 Reference manual,
 	 * STM32F76xxx and STM32F77xxx ... , 15.10 (Page 464) */
-	/*Temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25*/
-	/* TODO: use calibration values */
 
-	//float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
-	//temp[idx++] = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET;
+	/*Basic formula: temperature (in °C) = {(VSENSE – V25) / Avg_Slope} + 25
 
+	float v_sense = (float)(adc[ADC_CH_RANK_2]*VDDA_NOM/ADC_MAX);
+	temp[idx++] = ((v_sense - V25)/AVG_SLOPE) + T_OFFSET; */
+
+	/* Measurement running for two ranks (two channel measured)*/
 	measurement.FifoInsert(measurement.adc[ADC_CH_RANK_2]);
 
-	//printf("T = %3.2f*C\r\n", temp);
 }

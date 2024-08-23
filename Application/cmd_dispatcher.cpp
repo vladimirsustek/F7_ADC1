@@ -3,71 +3,140 @@
 #include "cmd_dispatcher.hpp"
 #include "uartcom.hpp"
 #include "measurement.hpp"
+#include "pwm.hpp"
 
 extern "C"
 {
 #include "gpio.h"
 }
 
-#if 0
-const uint8_t CMD_ARG_OFFSET = 5u; //PA03_
-
-if(lng != PWM_CMD_SIZE)
-{
-    return (uint16_t)(-1);
-}
-
-for(uint8_t idx = 0; idx < 3; idx++)
-{
-	if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
-	{
-		return (uint16_t)(-1);
-	}
-}
-
-uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
-period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
-period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
-
-if(period > 999)
-{
-    return (uint16_t)(-1);
-}
-
-//TIM2_CH1
-if(memcmp(pStrCmd, "PA15", 4u) == 0)
-{
-	htim2.Instance->CCR1 = period;
-	printf("PA15_%03lu\n", period);
-
-}
-
-//TIM2_CH2
-if(memcmp(pStrCmd, "PB03", 4u) == 0)
-{
-	htim2.Instance->CCR2 = period;
-	printf("PB03_%03lu\n", period);
-}
-#endif
 
 uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
 
+    if ((CMD_METHOD_LNG + CMD_NAME_LNG +
+         CMD_DELIMITER_LNG*2 + CMD_ARG1_LNG+
+         CMD_EOL_LNG) != lng) {
+
+        return CMD_RET_ERR;
+    }
+
+    uint32_t enable_arg = static_cast<uint32_t>(
+    		(pStrCmd[CMD_ARG_OFFSET] - '0')*1);
+    if(enable_arg != 0u && enable_arg != 1u)
+    {
+        return CMD_RET_ERR;
+    }
+
+    Pwm* pwm = Pwm::GetInstance();
+
+    if(enable_arg)
+    {
+    	pwm->PwmStartCh1();
+    }
+    else
+    {
+    	pwm->PwmStopCh1();
+    }
+
+    return CMD_RET_OK;
 }
 
 uint32_t EnablePwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
 {
+    if ((CMD_METHOD_LNG + CMD_NAME_LNG +
+         CMD_DELIMITER_LNG*2 + CMD_ARG1_LNG+
+         CMD_EOL_LNG) != lng) {
 
+        return CMD_RET_ERR;
+    }
+
+    uint32_t enable_arg = static_cast<uint32_t>(
+    		(pStrCmd[CMD_ARG_OFFSET] - '0')*1);
+    if(enable_arg != 0u && enable_arg != 1u)
+    {
+        return CMD_RET_ERR;
+    }
+
+    Pwm* pwm = Pwm::GetInstance();
+
+    if(enable_arg)
+    {
+    	pwm->PwmStartCh2();
+    }
+    else
+    {
+    	pwm->PwmStopCh2();
+    }
+
+    return CMD_RET_OK;
 }
 
 uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
+    if ((CMD_METHOD_LNG + CMD_NAME_LNG +
+         CMD_DELIMITER_LNG*2 + CMD_ARG5_LNG+
+         CMD_EOL_LNG) != lng) {
 
+        return CMD_RET_ERR;
+    }
+
+	for(uint8_t idx = 0; idx < 3; idx++)
+	{
+		if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
+		{
+			return CMD_RET_ERR;
+		}
+	}
+
+	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
+	period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
+	period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+
+	if(period > Pwm::PWM_MAX_PERIOD)
+	{
+	    return CMD_RET_ERR;
+	}
+
+    Pwm* pwm = Pwm::GetInstance();
+
+    pwm->PwmSetPwmCh1(period);
+
+    return CMD_RET_OK;
 }
 
 uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
 {
 
+    if ((CMD_METHOD_LNG + CMD_NAME_LNG +
+         CMD_DELIMITER_LNG*2 + CMD_ARG5_LNG+
+         CMD_EOL_LNG) != lng) {
+
+        return CMD_RET_ERR;
+    }
+
+	for(uint8_t idx = 0; idx < 3; idx++)
+	{
+		if(pStrCmd[CMD_ARG_OFFSET+idx] > '9' || pStrCmd[CMD_ARG_OFFSET+idx] < '0')
+		{
+			return CMD_RET_ERR;
+		}
+	}
+
+	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
+	period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
+	period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+
+	if(period > Pwm::PWM_MAX_PERIOD)
+	{
+	    return CMD_RET_ERR;
+	}
+
+    Pwm* pwm = Pwm::GetInstance();
+
+    pwm->PwmSetPwmCh1(period);
+
+    return CMD_RET_OK;
 }
 
 uint32_t WriteBlueLED(const uint8_t* const pStrCmd, const uint8_t lng)
@@ -133,13 +202,15 @@ uint32_t ReadTemperature2(const uint8_t* const pStrCmd, const uint8_t lng)
 	return CMD_RET_OK;
 }
 
-constexpr uint CMD_TABLE_SIZE = 3u;
-
 const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
 
-/*01*/    {method_write,     	cmd_blue_led,           	WriteBlueLED},
+/*01*/    {method_set,     		cmd_blue_led,           	WriteBlueLED},
 /*02*/    {method_read,     	cmd_temperature1,           ReadTemperature1},
-/*03*/    {method_read,     	cmd_temperature2,    		ReadTemperature2}
+/*03*/    {method_read,     	cmd_temperature2,    		ReadTemperature2},
+/*04*/    {method_enable,     	cmd_pwm1,    				EnablePwmCh1},
+/*05*/    {method_enable,     	cmd_pwm2,    				EnablePwmCh2},
+/*06*/    {method_set,     		cmd_pwm1,    				SetPwmCh1},
+/*07*/    {method_set,     		cmd_pwm2,    				SetPwmCh1}
 
 };
 

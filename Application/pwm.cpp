@@ -12,7 +12,7 @@ extern "C"
 
 #include "pwm.hpp"
 
-Pwm* instance = nullptr;
+Pwm* Pwm::instance = nullptr;
 
 Pwm* Pwm::GetInstance()
 {
@@ -38,17 +38,18 @@ Pwm* Pwm::GetInstance()
 
 	}
 	htim2.Instance->ARR = 999u;
+
     return instance;
 }
 
 void Pwm::PwmStartCh1()
 {
-	  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 }
 
 void Pwm::PwmStartCh2()
 {
-	  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 }
 
 void Pwm::PwmStopCh1()
