@@ -39,14 +39,14 @@ typedef struct
 
 }argTypeLUT_t;
 
-typedef struct
+typedef struct CommandAr
 {
 	cmdType_e type;
 	uint32_t min;
 	uint32_t max;
 } CommandArg;
 
-typedef struct
+typedef struct DispatcherCommand
 {
 	pfn_u32_cpuc8cu8 function;
 	const CommandArg arg;
@@ -67,18 +67,28 @@ public:
     char word[4];
 };
 
+
 typedef struct CmdDisp{
     METHOD method;
     COMMAND command;
-    pfn_u32_cpuc8cu8 cmdFunc;
+    DispatcherCommand_t cmdFunc;
 } CmdDisp_t;
 
-typedef struct CmdDisp2{
-    METHOD method;
-    COMMAND command;
-    DispatcherCommand_t cmdFunc;
-} CmdDisp2_t;
+const CommandArg DEC_UI16_BOOL =
+{
+		DEC_UI16, 0, 1
+};
 
+const CommandArg NO_ARG =
+{
+		NOARG, 0, 0
+};
 
+const argTypeLUT_t argTypeLUTtable[2] =
+{
+		{NOARG, "NOARG"},
+		{DEC_UI16, "DEC_UI16"}
+
+};
 
 #endif // CMD_DEFS_H_INCLUDED
