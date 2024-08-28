@@ -24,9 +24,10 @@ constexpr uint32_t CMD_ARG5_LNG=5u;
 
 constexpr uint32_t CMD_ARG_OFFSET=(CMD_PLATFORM_LNG + CMD_NAME_LNG + CMD_METHOD_LNG + CMD_DELIMITER_LNG*2);
 
-constexpr uint32_t CMD_RET_OK =0x0;
-constexpr uint32_t CMD_RET_ERR=0xFFFF;
-constexpr uint32_t CMD_RET_UKN=0xF0F0;
+constexpr uint32_t CMD_RET_OK = 0x0;
+constexpr uint32_t CMD_RET_ERR = 0xFFFF;
+constexpr uint32_t CMD_RET_ARG_ERR = 0x0F0F;
+constexpr uint32_t CMD_RET_UKN = 0xF0F0;
 
 typedef uint32_t (*pfn_u32_cpuc8cu8)(const uint8_t* const, const uint8_t lng);
 
