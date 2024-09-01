@@ -15,8 +15,6 @@ extern "C"
 #include "usart.h"
 }
 
-#define UART_RX_BUFF_SIZE 64
-
 uint8_t buffer[UART_RX_BUFF_SIZE];
 uint32_t length;
 

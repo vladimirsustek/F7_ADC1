@@ -8,6 +8,8 @@
 #ifndef CMD_PWM_HPP_
 #define CMD_PWM_HPP_
 
+#include "pwm.hpp"
+
 uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng);
 uint32_t EnablePwmCh2(const uint8_t* const pStrCmd, const uint8_t lng);
 uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng);

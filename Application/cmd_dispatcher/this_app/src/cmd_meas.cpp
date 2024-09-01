@@ -9,6 +9,7 @@
 #include "cmd_defs.hpp"
 #include "measurement.hpp"
 #include "uartcom.hpp"
+#include "cmd_utils.hpp"
 
 uint32_t ReadTemperature1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
@@ -20,9 +21,19 @@ uint32_t ReadTemperature1(const uint8_t* const pStrCmd, const uint8_t lng)
 
 	Measurement* measurement = Measurement::GetInstance();
 
-	char buffer[8] = {0};
+	char buffer[8];
 
-	uint32_t length = sprintf(buffer, "%+3.2f\n",  measurement->GetTemperature());
+	float ftemp = measurement->GetTemperature();
+
+	ftemp *= 100;
+
+	int32_t itemp = static_cast<int32_t>(ftemp);
+
+	uint32_t length = i32toStr(itemp, buffer, 8);
+	buffer[length] = '\n';
+	length++;
+
+	assert(length <= 8);
 
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
 
@@ -43,7 +54,15 @@ uint32_t ReadTemperature2(const uint8_t* const pStrCmd, const uint8_t lng)
 
 	char buffer[8] = {0};
 
-	uint32_t length = sprintf(buffer, "%+3.2f\n",  measurement->GetCalibTemperature());
+	float ftemp = measurement->GetCalibTemperature();
+
+	ftemp *= 100;
+
+	int32_t itemp = static_cast<int32_t>(ftemp);
+
+	uint32_t length = i32toStr(itemp, buffer, 8);
+	buffer[length] = '\n';
+	length++;
 
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
 

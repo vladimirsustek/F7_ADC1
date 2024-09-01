@@ -19,7 +19,6 @@ constexpr uint32_t CMD_METHOD_LNG=2u;
 constexpr uint32_t CMD_NAME_LNG=4u;
 
 constexpr uint32_t CMD_ARG1_LNG=1u;
-constexpr uint32_t CMD_ARG2_LNG=2u;
 constexpr uint32_t CMD_ARG5_LNG=5u;
 
 constexpr uint32_t CMD_ARG_OFFSET=(CMD_PLATFORM_LNG + CMD_NAME_LNG + CMD_METHOD_LNG + CMD_DELIMITER_LNG*2);

@@ -1,31 +1,20 @@
 #include "cmd_commands.hpp"
 #include "cmd_defs.hpp"
 #include "cmd_dispatcher.hpp"
-#include "uartcom.hpp"
-#include "measurement.hpp"
-#include "pwm.hpp"
+#include "cmd_table.hpp"
+#include "cmd_ioport.hpp"
 
-#include "cmd_pwm.hpp"
-#include "cmd_gpio.hpp"
-#include "cmd_meas.hpp"
 
-constexpr uint32_t HELP_MAX_LINE_LNG = 64u;
-
-const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
-/*01*/		{method_set,		cmd_blue_led,			cmdWriteBlueLED},
-/*02*/		{method_set,		cmd_red_led,			cmdWriteRedLED},
-/*03*/		{method_read,		cmd_temperature1,		cmdReadTemperature1},
-/*04*/		{method_read,		cmd_temperature2,		cmdReadTemperature2},
-/*05*/		{method_enable,		cmd_pwm1,				cmdEnablePwmCh1},
-/*06*/		{method_enable,		cmd_pwm2,				cmdEnablePwmCh2},
-/*07*/		{method_set,		cmd_pwm1,				cmdSetPwmCh1},
-/*08*/		{method_set,		cmd_pwm2,				cmdSetPwmCh2}
-};
-
-void HelpCommandPrintOut(void)
+CommandDispatcher::CommandDispatcher()
 {
-    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
-	char helpLine[HELP_MAX_LINE_LNG] = {0};
+	cmdDispOutInit();
+}
+
+
+void CommandDispatcher::HelpCommandPrintOut()
+{
+	char helpLine[HELP_MAX_LINE_LNG];
+
     uint32_t lng;
 
 	for(uint32_t idx = 0; idx < CMD_TABLE_SIZE; idx++)
@@ -44,7 +33,7 @@ void HelpCommandPrintOut(void)
 
 			assert(lng <= HELP_MAX_LINE_LNG);
 
-			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+			cmdDispOutMsg(helpLine, lng);
 
 			memset(helpLine, 0u, 64);
 
@@ -56,7 +45,7 @@ void HelpCommandPrintOut(void)
 
 			assert(lng <= HELP_MAX_LINE_LNG);
 
-			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+			cmdDispOutMsg(helpLine, lng);
 		}
 		else
 		{
@@ -70,7 +59,7 @@ void HelpCommandPrintOut(void)
 
 			assert(lng <= HELP_MAX_LINE_LNG);
 
-			uart->Write(reinterpret_cast<uint8_t*>(helpLine), lng);
+			cmdDispOutMsg(helpLine, lng);
 
 		}
 	}
@@ -83,8 +72,6 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
     const char STR_CMD_ERR[] = "CMD_ERR\n";
     const char STR_CMD_UKN[] = "CMD_UKN -> Try: \"HELP\\n\"\n";
     const char STR_CMD_FTL[] = "CMD_FTL\n";
-
-    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
 
     for(uint8_t idx = 0; idx < CMD_TABLE_SIZE; idx++) {
         if ((!memcmp(pStrCmd, cmdTable[idx].method.word, CMD_METHOD_LNG)) &&
@@ -99,12 +86,12 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
     {
         case CMD_RET_OK : 
         {
-            uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_OK)), strlen(STR_CMD_OK));
+        	cmdDispOutMsg(STR_CMD_OK, strlen(STR_CMD_OK));
         }
         break;
         case CMD_RET_ERR : 
         {
-            uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_ERR)), strlen(STR_CMD_ERR));
+        	cmdDispOutMsg(STR_CMD_ERR, strlen(STR_CMD_ERR));
         }
         break;
         case CMD_RET_UKN : 
@@ -115,14 +102,13 @@ uint32_t CommandDispatcher::Dispatch(const uint8_t* const pStrCmd, const uint8_t
             }
             else
             {
-                uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_UKN)),
-                		strlen(STR_CMD_UKN));
+            	cmdDispOutMsg(STR_CMD_UKN, strlen(STR_CMD_UKN));
             }
         }
         break;
         default : 
         {
-            uart->Write(reinterpret_cast<uint8_t*>(const_cast<char*>(STR_CMD_FTL)), strlen(STR_CMD_FTL));
+        	cmdDispOutMsg(STR_CMD_FTL, strlen(STR_CMD_FTL));
         }
     }
 

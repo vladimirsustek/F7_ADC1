@@ -3,14 +3,15 @@
 
 #include "cmd_defs.hpp"
 
-constexpr uint CMD_TABLE_SIZE = 8u;
+constexpr uint32_t SHARED_BUFF_SIZE = 128u;
 
 class CommandDispatcher
 {
 public: 
-    CommandDispatcher() = default;
+    CommandDispatcher();
     ~CommandDispatcher() = default;
     uint32_t Dispatch(const uint8_t* const pStrCmd, const uint8_t lng);
+    void HelpCommandPrintOut();
 };
 
 #endif // CMD_DISPATCHER_H_INCLUDED
