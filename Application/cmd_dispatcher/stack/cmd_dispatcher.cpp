@@ -3,6 +3,7 @@
 #include "cmd_dispatcher.hpp"
 #include "cmd_table.hpp"
 #include "cmd_ioport.hpp"
+#include "cmd_utils.hpp"
 
 
 CommandDispatcher::CommandDispatcher()

@@ -88,9 +88,9 @@ uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 		}
 	}
 
-	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
-	period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
-	period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*100;
+	period += (pStrCmd[CMD_ARG_OFFSET + 3] - '0')*10;
+	period += (pStrCmd[CMD_ARG_OFFSET + 4] - '0')*1;
 
 	if(period > Pwm::PWM_MAX_PERIOD)
 	{
@@ -122,9 +122,9 @@ uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
 		}
 	}
 
-	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 0] - '0')*100;
-	period += (pStrCmd[CMD_ARG_OFFSET + 1] - '0')*10;
-	period += (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*1;
+	uint32_t period = (pStrCmd[CMD_ARG_OFFSET + 2] - '0')*100;
+	period += (pStrCmd[CMD_ARG_OFFSET + 3] - '0')*10;
+	period += (pStrCmd[CMD_ARG_OFFSET + 4] - '0')*1;
 
 	if(period > Pwm::PWM_MAX_PERIOD)
 	{
