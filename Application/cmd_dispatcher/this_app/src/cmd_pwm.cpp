@@ -133,7 +133,7 @@ uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
 
     Pwm* pwm = Pwm::GetInstance();
 
-    pwm->PwmSetPwmCh1(period);
+    pwm->PwmSetPwmCh2(period);
 
     return CMD_RET_OK;
 }
