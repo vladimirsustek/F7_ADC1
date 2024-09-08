@@ -16,5 +16,6 @@ const COMMAND cmd_blue_led = COMMAND("LEDB");
 const COMMAND cmd_red_led = COMMAND("LEDR");
 const COMMAND cmd_pwm1 = COMMAND("PWM1");
 const COMMAND cmd_pwm2 = COMMAND("PWM2");
+const COMMAND cmd_swdg = COMMAND("SWDG");
 
 #endif // CMD_COMMANDS_H_INCLUDED

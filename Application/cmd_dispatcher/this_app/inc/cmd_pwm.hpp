@@ -14,6 +14,7 @@ uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng);
 uint32_t EnablePwmCh2(const uint8_t* const pStrCmd, const uint8_t lng);
 uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng);
 uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng);
+uint32_t RefreshPwmWdg(const uint8_t* const pStrCmd, const uint8_t lng);
 
 const CommandArg DEC_UI16_PWM =
 {
@@ -42,6 +43,12 @@ const DispatcherCommand_t cmdSetPwmCh2 =
 {
 		SetPwmCh2,
 		DEC_UI16_PWM
+};
+
+const DispatcherCommand_t cmdRefreshPwmWdg =
+{
+		RefreshPwmWdg,
+		NO_ARG
 };
 
 #endif /* CMD_PWM_HPP_ */

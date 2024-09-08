@@ -25,8 +25,9 @@ public:
 	void PwmStopCh2();
 	void PwmSetPwmCh1(uint32_t dc);
 	void PwmSetPwmCh2(uint32_t dc);
+	uint32_t prevTick;
 private:
-	Pwm() = default;
+	Pwm() {prevTick = 0;};
 	~Pwm() = default;
 	static Pwm* instance;
 };

@@ -138,3 +138,21 @@ uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
     return CMD_RET_OK;
 }
 
+/* TODO: Get this out or implement*/
+uint32_t RefreshPwmWdg(const uint8_t* const pStrCmd, const uint8_t lng)
+{
+    Pwm* pwm = Pwm::GetInstance();
+
+    /* Allowed not early than after 1s (do it even random, based on mutually communicated intervals) */
+	if (HAL_GetTick() < pwm->prevTick + 1000u)
+	{
+		return CMD_RET_ERR;
+	}
+	else
+	{
+		pwm->prevTick = HAL_GetTick();
+	}
+
+    return CMD_RET_OK;
+}
+

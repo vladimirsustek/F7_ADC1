@@ -13,7 +13,7 @@
 #include "cmd_meas.hpp"
 
 constexpr uint32_t HELP_MAX_LINE_LNG = 64u;
-constexpr uint32_t CMD_TABLE_SIZE = 8u;
+constexpr uint32_t CMD_TABLE_SIZE = 9u;
 
 const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
 /*01*/		{method_set,		cmd_blue_led,			cmdWriteBlueLED},
@@ -23,7 +23,8 @@ const CmdDisp_t cmdTable[CMD_TABLE_SIZE] = {
 /*05*/		{method_enable,		cmd_pwm1,				cmdEnablePwmCh1},
 /*06*/		{method_enable,		cmd_pwm2,				cmdEnablePwmCh2},
 /*07*/		{method_set,		cmd_pwm1,				cmdSetPwmCh1},
-/*08*/		{method_set,		cmd_pwm2,				cmdSetPwmCh2}
+/*08*/		{method_set,		cmd_pwm2,				cmdSetPwmCh2},
+/*09*/		{method_set,		cmd_swdg,				cmdRefreshPwmWdg}
 };
 
 #endif /* CMD_DISPATCHER_THIS_APP_CMD_TABLE_HPP_ */
