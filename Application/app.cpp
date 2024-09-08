@@ -6,9 +6,11 @@
  */
 #include "uartcom.hpp"
 #include "measurement.hpp"
+#include "pwm.hpp"
 
 #include "app_interface.h"
 #include "cmd_dispatcher.hpp"
+#include "st_callbacks.hpp"
 
 extern "C"
 {
@@ -26,6 +28,15 @@ void noreturn_app(void)
 	Measurement* measurement = Measurement::GetInstance();
 
     CommandDispatcher dispatcher = CommandDispatcher();
+
+    /* Ensure PWM is really disabled on reset */
+    Pwm* pwm = Pwm::GetInstance();
+
+    pwm->PwmSetPwmCh1(Pwm::PWM_MIN_PERIOD);
+    pwm->PwmSetPwmCh2(Pwm::PWM_MIN_PERIOD);
+    pwm->PwmStopCh1();
+    pwm->PwmStopCh2();
+
 
 	uart->StartBuffer();
 	measurement->StartMeasurement();
@@ -62,3 +73,4 @@ void adc_cb(void * handle)
 		AdcCallback(*meas, hadc);
 	}
 }
+

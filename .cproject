@@ -193,11 +193,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/stack"/>
 						<entry excluding="cmd_dispatcher" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application"/>
 						<entry excluding="this_app|stack" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/stack"/>
-						<entry excluding="src|inc" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/this_app"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/this_app/inc"/>
+						<entry excluding="src|inc" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/this_app"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Application/cmd_dispatcher/this_app/src"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
