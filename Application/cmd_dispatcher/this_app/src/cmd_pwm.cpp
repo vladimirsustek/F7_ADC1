@@ -190,6 +190,12 @@ uint32_t RefreshPwmWdg(const uint8_t* const pStrCmd, const uint8_t lng)
 		pwm->prevTick = HAL_GetTick();
 	}
 
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[2 + CMD_EOL_LNG] = {'N', 'A', CMD_EOL};
+
+    uart->Write(ret_val, 2 + CMD_EOL_LNG);
+
     return CMD_RET_OK;
 }
 
