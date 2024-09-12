@@ -30,8 +30,8 @@ uint32_t ReadTemperature1(const uint8_t* const pStrCmd, const uint8_t lng)
 	int32_t itemp = static_cast<int32_t>(ftemp);
 
 	uint32_t length = i32toStr(itemp, buffer, 8);
-	buffer[length] = '\n';
-	length++;
+	buffer[length] = CMD_EOL;
+	length += CMD_EOL_LNG;
 
 	assert(length <= 8);
 
@@ -61,8 +61,8 @@ uint32_t ReadTemperature2(const uint8_t* const pStrCmd, const uint8_t lng)
 	int32_t itemp = static_cast<int32_t>(ftemp);
 
 	uint32_t length = i32toStr(itemp, buffer, 8);
-	buffer[length] = '\n';
-	length++;
+	buffer[length] = CMD_EOL;
+	length += CMD_EOL_LNG;
 
     UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
 

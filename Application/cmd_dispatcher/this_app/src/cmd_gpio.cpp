@@ -8,6 +8,7 @@
 #include "cmd_commands.hpp"
 #include "cmd_defs.hpp"
 #include "pwm.hpp"
+#include "uartcom.hpp"
 
 extern "C"
 {
@@ -32,7 +33,13 @@ uint32_t WriteBlueLED(const uint8_t* const pStrCmd, const uint8_t lng)
 
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, enable_arg);
 
-    return 0;
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG1_LNG + CMD_EOL_LNG] = {pStrCmd[CMD_ARG_OFFSET], CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG1_LNG + CMD_EOL_LNG);
+
+    return CMD_RET_OK;
 }
 
 uint32_t WriteRedLED(const uint8_t* const pStrCmd, const uint8_t lng)
@@ -53,5 +60,11 @@ uint32_t WriteRedLED(const uint8_t* const pStrCmd, const uint8_t lng)
 
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, enable_arg);
 
-    return 0;
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG1_LNG + CMD_EOL_LNG] = {pStrCmd[CMD_ARG_OFFSET], CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG1_LNG + CMD_EOL_LNG);
+
+    return CMD_RET_OK;
 }

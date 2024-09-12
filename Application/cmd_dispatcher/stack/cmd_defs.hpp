@@ -10,6 +10,7 @@ extern "C"
 
 
 constexpr uint32_t CMD_EOL_LNG=1u;
+constexpr uint8_t CMD_EOL = '\n';
 constexpr uint32_t CMD_DELIMITER_LNG=1u;
 constexpr char CMD_DELIMITER='_';
 

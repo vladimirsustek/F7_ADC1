@@ -9,6 +9,7 @@
 #include "cmd_commands.hpp"
 #include "cmd_defs.hpp"
 #include "pwm.hpp"
+#include "uartcom.hpp"
 
 uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 {
@@ -37,6 +38,12 @@ uint32_t EnablePwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
     {
     	pwm->PwmStopCh1();
     }
+
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG1_LNG + CMD_EOL_LNG] = {pStrCmd[CMD_ARG_OFFSET], CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG1_LNG + CMD_EOL_LNG);
 
     return CMD_RET_OK;
 }
@@ -67,6 +74,12 @@ uint32_t EnablePwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
     {
     	pwm->PwmStopCh2();
     }
+
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG1_LNG + CMD_EOL_LNG] = {pStrCmd[CMD_ARG_OFFSET], CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG1_LNG + CMD_EOL_LNG);
 
     return CMD_RET_OK;
 }
@@ -101,6 +114,18 @@ uint32_t SetPwmCh1(const uint8_t* const pStrCmd, const uint8_t lng)
 
     pwm->PwmSetPwmCh1(period);
 
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG5_LNG + CMD_EOL_LNG] = {
+    		pStrCmd[CMD_ARG_OFFSET + 0],
+			pStrCmd[CMD_ARG_OFFSET + 1],
+			pStrCmd[CMD_ARG_OFFSET + 2],
+			pStrCmd[CMD_ARG_OFFSET + 3],
+			pStrCmd[CMD_ARG_OFFSET+  4],
+			CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG5_LNG + CMD_EOL_LNG);
+
     return CMD_RET_OK;
 }
 
@@ -134,6 +159,18 @@ uint32_t SetPwmCh2(const uint8_t* const pStrCmd, const uint8_t lng)
     Pwm* pwm = Pwm::GetInstance();
 
     pwm->PwmSetPwmCh2(period);
+
+    UartCom *uart = UartCom::GetInstance(UARTPeripheral::F7_UART3);
+
+    uint8_t ret_val[CMD_ARG5_LNG + CMD_EOL_LNG] = {
+    		pStrCmd[CMD_ARG_OFFSET + 0],
+			pStrCmd[CMD_ARG_OFFSET + 1],
+			pStrCmd[CMD_ARG_OFFSET + 2],
+			pStrCmd[CMD_ARG_OFFSET + 3],
+			pStrCmd[CMD_ARG_OFFSET+  4],
+			CMD_EOL};
+
+    uart->Write(ret_val, CMD_ARG5_LNG + CMD_EOL_LNG);
 
     return CMD_RET_OK;
 }
